@@ -585,10 +585,26 @@ namespace RadzenBlazorDemos
                 new Example()
         {
             Name = "DataList",
-                    Title = "Blazor data list component",
-                    Path = "datalist",
                     Icon = "&#xe896",
-                    Tags = new[] { "dataview", "grid", "table" }
+                    Tags = new[] { "dataview", "grid", "table" },
+                    Children = new[] {
+                        new Example
+                        {
+                            Name = "IQueryable",
+                            Title = "Blazor data list component",
+                            New = true,
+                            Path = "datalist",
+                            Tags = new [] { "dataview", "grid", "table", "list"},
+                        },
+                        new Example
+                        {
+                            Name = "OData service",
+                            Title = "Blazor data list with OData",
+                            New = true,
+                            Path = "datalist-loaddata",
+                            Tags = new [] { "dataview", "grid", "table", "list", "odata" },
+                        }
+                    }
                 },
                 new Example()
         {
@@ -995,6 +1011,15 @@ namespace RadzenBlazorDemos
                 },
                 new Example()
                 {
+                    Name = "FormField",
+                    Path = "form-field",
+                    Title = "Blazor form field component",
+                    Icon = "&#xe578",
+                    New = true,
+                    Tags = new [] { "form", "label", "floating", "float", "edit", "outline", "input", "helper", "valid" }
+                },
+                new Example()
+                {
                     Name="HtmlEditor",
                     Icon = "&#xe3c9",
                     Children = new [] {
@@ -1002,16 +1027,14 @@ namespace RadzenBlazorDemos
                         {
                             Name = "Default Tools",
                             Path = "html-editor",
-                            Title = "Blazor HTML editor componenet with lots of built-in tools",
-                            Icon = "&#xe3c9",
+                            Title = "Blazor HTML editor component with lots of built-in tools",
                             Tags = new [] { "html", "editor", "rich", "text" }
                         },
                         new Example()
                         {
                             Name = "Custom Tools",
                             Path = "html-editor-custom-tools",
-                            Title = "Blazor HTML editor componenet with custom tools",
-                            Icon = "&#xe8b8",
+                            Title = "Blazor HTML editor component with custom tools",
                             Tags = new [] { "html", "editor", "rich", "text", "tool", "custom" }
                         },
                     }
@@ -1021,7 +1044,7 @@ namespace RadzenBlazorDemos
                     Name = "ListBox",
                     Path = "listbox",
                     Icon = "&#xe8ef",
-                    Title = "Blazor listbox componenet",
+                    Title = "Blazor listbox component",
                     Tags = new [] { "select", "picker", "form", "edit" }
                 },
                 new Example()
@@ -1045,7 +1068,7 @@ namespace RadzenBlazorDemos
                     Name = "Password",
                     Path = "password",
                     Title = "Blazor password textbox component",
-                    Icon = "&#xe8a1",
+                    Icon = "&#xf042",
                     Tags = new [] { "input", "form", "edit" }
                 },
                 new Example()
@@ -1418,7 +1441,14 @@ namespace RadzenBlazorDemos
                     Icon = "&#xe5ca",
                     Tags = new [] { "validator", "validation", "required"}
                 },
-
+                new Example()
+                {
+                    Name = "CustomValidator",
+                    Path = "customvalidator",
+                    Title = "Blazor custom validator component",
+                    Icon = "&#xe6b1",
+                    Tags = new [] { "validator", "validation", "custom", "unique"}
+                },
             }
         },
 

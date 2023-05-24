@@ -243,12 +243,6 @@ namespace Radzen.Blazor
         public bool Responsive { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating DataGrid density.
-        /// </summary>
-        [Parameter]
-        public Density Density { get; set; }
-
-        /// <summary>
         /// The grouped and paged View
         /// </summary>
         IEnumerable<GroupResult> _groupedPagedView;
@@ -456,7 +450,18 @@ namespace Radzen.Blazor
             selectedColumns = columnsList;
         }
 
-        internal void RemoveColumn(RadzenDataGridColumn<TItem> column)
+		public void UpdatePickableColumns()
+		{
+			if (allColumns.Any(c => c.Pickable))
+			{
+				if (AllowColumnPicking)
+				{
+					allPickableColumns = allColumns.Where(c => c.Pickable).OrderBy(c => c.GetOrderIndex()).ToList();
+				}
+			}
+		}
+
+		internal void RemoveColumn(RadzenDataGridColumn<TItem> column)
         {
             if (columns.Contains(column))
             {
@@ -690,7 +695,10 @@ namespace Radzen.Blazor
         [Parameter]
         public PopupRenderMode FilterPopupRenderMode { get; set; } = PopupRenderMode.Initial;
 
-        internal async Task ClearFilter(RadzenDataGridColumn<TItem> column, bool closePopup = false)
+        /// <summary>
+        /// Сlear filter on the specified column
+        /// </summary>
+        public async Task ClearFilter(RadzenDataGridColumn<TItem> column, bool closePopup = false)
         {
             if (closePopup)
             {
@@ -722,13 +730,16 @@ namespace Radzen.Blazor
             await InvokeAsync(Reload);
         }
 
-        internal async Task ApplyFilter(RadzenDataGridColumn<TItem> column, bool closePopup = false)
+        /// <summary>
+        /// Apply filter to the specified column
+        /// </summary>
+        public async Task ApplyFilter(RadzenDataGridColumn<TItem> column, bool closePopup = false)
         {
             if (closePopup)
             {
                 await JSRuntime.InvokeVoidAsync("Radzen.closePopup", $"{PopupID}{column.GetFilterProperty()}");
             }
-            OnFilter(new ChangeEventArgs() { Value = column.GetFilterValue() }, column, true);
+            await OnFilter(new ChangeEventArgs() { Value = column.GetFilterValue() }, column, true);
         }
 
         internal IReadOnlyDictionary<string, object> CellAttributes(TItem item, RadzenDataGridColumn<TItem> column)
@@ -1090,6 +1101,13 @@ namespace Radzen.Blazor
         /// <value><c>true</c> if cell data is shown as tooltip; otherwise, <c>false</c>.</value>
         [Parameter]
         public bool ShowCellDataAsTooltip { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets a value indicating whether column title should be shown as tooltip.
+        /// </summary>
+        /// <value><c>true</c> if column title is shown as tooltip; otherwise, <c>false</c>.</value>
+        [Parameter]
+        public bool ShowColumnTitleAsTooltip { get; set; } = true;
 
         /// <summary>
         /// Gets or sets the column picker columns showing text.
@@ -1646,6 +1664,18 @@ namespace Radzen.Blazor
                 }
 #endif
             }
+
+            if (LoadData.HasDelegate && View.Count() == 0 && Count > 0)
+            {
+                if (CurrentPage > 1)
+                {
+                    await GoToPage(CurrentPage - 1);
+                }
+                else
+                {
+                    await FirstPage();
+                }
+            }
         }
 
         IEnumerable<FilterDescriptor> filters = Enumerable.Empty<FilterDescriptor>();
@@ -1919,6 +1949,15 @@ namespace Radzen.Blazor
         public async System.Threading.Tasks.Task ExpandRow(TItem item)
         {
             await ExpandItem(item);
+        }
+
+        /// <summary>
+        /// Gets boolean value indicating if the row is expanded or not.
+        /// </summary>
+        /// <param name="item">The item.</param>
+        public bool IsRowExpanded(TItem item)
+        {
+            return expandedItems.Keys.Any(i => ItemEquals(i, item));
         }
 
         /// <summary>
@@ -2682,13 +2721,9 @@ namespace Radzen.Blazor
         /// <inheritdoc />
         protected override async Task OnPageSizeChanged(int value)
         {
-            pageSize = value;
-
-            SaveSettings();
-
-            await PageSizeChanged.InvokeAsync(value);
-
             await base.OnPageSizeChanged(value);
+            await PageSizeChanged.InvokeAsync(value);
+            SaveSettings();
         }
 
         /// <summary>
@@ -2838,7 +2873,7 @@ namespace Radzen.Blazor
                 {
                     skip = CurrentPage * PageSize;
 
-                    if (hasFilter ? skip < View.Count() : true)
+                    if (hasFilter ? skip <= View.Count() : true)
                     {
                         CalculatePager();
                         UpdateColumnsOrder();
@@ -2868,6 +2903,14 @@ namespace Radzen.Blazor
                 else if (type == typeof(double) || type == typeof(double?))
                 {
                     return element.GetDouble();
+                }
+                else if (type == typeof(float) || type == typeof(float?))
+                {
+                    return element.GetSingle();
+                }
+                else if (type == typeof(decimal) || type == typeof(decimal?))
+                {
+                    return element.GetDecimal();
                 }
                 else if (type == typeof(bool) || type == typeof(bool?))
                 {
