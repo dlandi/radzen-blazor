@@ -1,4 +1,6 @@
+using System;
 using Bunit;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Radzen.Blazor.Tests
@@ -55,6 +57,36 @@ namespace Radzen.Blazor.Tests
             component.Find(".rz-spinner-down").Click();
 
             Assert.False(raised, $"Numeric value should Change event if value is less than min value.");
+        }
+
+        [Fact]
+        public void Numeric_Respect_Nullable_With_MinParameter()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+            ctx.JSInterop.SetupModule("_content/Radzen.Blazor/Radzen.Blazor.js");
+
+            var component = ctx.RenderComponent<RadzenNumeric<double?>>();
+
+            var raised = false;
+            var value = 3.5;
+            object newValue = null;
+
+            component.SetParametersAndRender(parameters =>
+            {
+                parameters.Add(p => p.Change, args => { raised = true; newValue = args; });
+                parameters.Add<decimal?>(p => p.Min, 1);
+            });
+
+            component.Find("input").Change(value);
+
+            Assert.True(raised);
+            Assert.True(object.Equals(value, newValue));
+
+            component.Find("input").Change("");
+
+            Assert.True(raised);
+            Assert.True(object.Equals(null, newValue));
         }
 
         [Fact]
@@ -187,10 +219,23 @@ namespace Radzen.Blazor.Tests
             component.SetParametersAndRender(parameters => parameters.Add<bool>(p => p.AutoComplete, false));
 
             Assert.Contains(@$"autocomplete=""off""", component.Markup);
+            Assert.Contains(@$"aria-autocomplete=""none""", component.Markup);
 
             component.SetParametersAndRender(parameters => parameters.Add<bool>(p => p.AutoComplete, true));
 
             Assert.Contains(@$"autocomplete=""on""", component.Markup);
+            Assert.DoesNotContain(@$"aria-autocomplete", component.Markup);
+
+            component.SetParametersAndRender(parameters => parameters.AddUnmatched("autocomplete", "custom"));
+
+            Assert.Contains(@$"autocomplete=""custom""", component.Markup);
+            Assert.DoesNotContain(@$"aria-autocomplete", component.Markup);
+
+            component.Instance.DefaultAutoCompleteAttribute = "autocomplete-custom";
+            component.SetParametersAndRender(parameters => parameters.Add(p => p.AutoComplete, false));
+
+            Assert.Contains(@$"autocomplete=""autocomplete-custom""", component.Markup);
+            Assert.Contains(@$"aria-autocomplete=""none""", component.Markup);
         }
 
         [Fact]
@@ -377,6 +422,125 @@ namespace Radzen.Blazor.Tests
             component.Render();
 
             Assert.Contains($" value=\"{valueToTest.ToString(format)}\"", component.Markup);
+        }
+        
+        public static TheoryData<decimal, decimal> NumericFormatterPreservesLeadingZerosData =>
+            new()
+            {
+                { 10.000m, 100.000m },
+                { 100.000m, 10.000m }
+            };
+        
+        [Theory]
+        [MemberData(nameof(NumericFormatterPreservesLeadingZerosData))]
+        public void Numeric_Formatter_PreservesLeadingZeros(decimal oldValue, decimal newValue)
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+            ctx.JSInterop.SetupModule("_content/Radzen.Blazor/Radzen.Blazor.js");
+
+            string format = "0.000";
+
+            var component = ctx.RenderComponent<RadzenNumeric<decimal>>(
+                ComponentParameter.CreateParameter(nameof(RadzenNumeric<decimal>.Format), format),
+                ComponentParameter.CreateParameter(nameof(RadzenNumeric<decimal>.Value), oldValue)
+            );
+
+            component.Render();
+            
+            Assert.Contains($" value=\"{oldValue.ToString(format)}\"", component.Markup);
+
+            component.Find("input").Change(newValue);
+            
+            Assert.Contains($" value=\"{newValue.ToString(format)}\"", component.Markup);
+        }
+
+        [Fact]
+        public void Numeric_Uses_ConvertValue()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+            ctx.JSInterop.SetupModule("_content/Radzen.Blazor/Radzen.Blazor.js");
+
+            var value = new Dollars(11m);
+            Dollars? ConvertFunc(string s) => decimal.TryParse(s, out var val) ? new Dollars(val) : null;
+            var component = ctx.RenderComponent<RadzenNumeric<Dollars?>>(
+                ComponentParameter.CreateParameter(nameof(RadzenNumeric<Dollars?>.ConvertValue), (Func<string, Dollars?>)ConvertFunc),
+                ComponentParameter.CreateParameter(nameof(RadzenNumeric<Dollars?>.Value), value)
+            );
+
+            component.Render();
+            
+            Assert.Contains($" value=\"{value.ToString()}\"", component.Markup);
+
+            var newValue = new Dollars(13.53m);
+            component.Find("input").Change("13.53");
+
+            Assert.Contains($" value=\"{newValue.ToString()}\"", component.Markup);
+        }
+
+        [Fact]
+        public void Numeric_Supports_TypeConverter()
+        {
+            using var ctx = new TestContext();
+
+            var valueToTest = new Dollars(100.234m);
+            string format = "0.00";
+
+            var component = ctx.RenderComponent<RadzenNumeric<Dollars>>(
+                ComponentParameter.CreateParameter(nameof(RadzenNumeric<Dollars>.Format), format),
+                ComponentParameter.CreateParameter(nameof(RadzenNumeric<Dollars>.Value), valueToTest)
+            );
+
+            component.Render();
+
+            Assert.Contains($" value=\"{valueToTest.ToString(format)}\"", component.Markup);
+        }
+
+        [Fact]
+        public void Numeric_Supports_IComparable()
+        {
+            using var ctx = new TestContext();
+            ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+            ctx.JSInterop.SetupModule("_content/Radzen.Blazor/Radzen.Blazor.js");
+
+            var component = ctx.RenderComponent<RadzenNumeric<Dollars>>();
+
+            var maxValue = 2;
+
+            component.SetParametersAndRender(parameters =>
+            {
+                component.SetParametersAndRender(parameters =>
+                {
+                    parameters.Add(p => p.Value, new Dollars(1m));
+                    parameters.Add(p => p.Max, maxValue);
+                });
+            });
+            
+            component.Find("input").Change("13.53");
+
+            var maxDollars = new Dollars(2);
+            Assert.Contains($" value=\"{maxDollars.ToString()}\"", component.Markup);
+            Assert.Equal(component.Instance.Value, maxDollars);
+        }
+
+        [Fact]
+        public void Numeric_Supports_IFormattable()
+        {
+            using var ctx = new TestContext();
+
+            var valueToTest = new Temperature(60.23m);
+            const string format = "F";
+
+            var component = ctx.RenderComponent<RadzenNumeric<Temperature>>(
+                ComponentParameter.CreateParameter(nameof(RadzenNumeric<Temperature>.Format), format),
+                ComponentParameter.CreateParameter(nameof(RadzenNumeric<Temperature>.Value), valueToTest)
+            );
+
+            component.Render();
+
+            var input = component.Find("input").GetAttribute("value");
+            input.MarkupMatches(valueToTest.ToString(format));
         }
     }
 }

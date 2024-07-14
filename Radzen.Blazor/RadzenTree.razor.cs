@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Web;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Threading.Tasks;
 
 namespace Radzen.Blazor
@@ -31,6 +33,12 @@ namespace Radzen.Blazor
     /// </example>
     public partial class RadzenTree : RadzenComponent
     {
+        /// <summary>
+        /// Gets or sets the open button aria-label attribute.
+        /// </summary>
+        [Parameter]
+        public string SelectItemAriaLabel { get; set; } = "Select item";
+
         /// <inheritdoc />
         protected override string GetComponentCssClass()
         {
@@ -106,6 +114,31 @@ namespace Radzen.Blazor
         /// </summary>
         [Parameter]
         public EventCallback<TreeEventArgs> Collapse { get; set; }
+
+        /// <summary>
+        /// A callback that will be invoked when item is rendered.
+        /// </summary>
+        [Parameter]
+        public Action<TreeItemRenderEventArgs> ItemRender { get; set; }
+
+        /// <summary>
+        /// Gets or sets the context menu callback.
+        /// </summary>
+        /// <value>The context menu callback.</value>
+        [Parameter]
+        public EventCallback<TreeItemContextMenuEventArgs> ItemContextMenu { get; set; }
+
+        internal Tuple<Radzen.TreeItemRenderEventArgs, IReadOnlyDictionary<string, object>> ItemAttributes(RadzenTreeItem item)
+        {
+            var args = new TreeItemRenderEventArgs() { Data = item.GetAllChildValues(), Value = item.Value };
+
+            if (ItemRender != null)
+            {
+                ItemRender(args);
+            }
+
+            return new Tuple<TreeItemRenderEventArgs, IReadOnlyDictionary<string, object>>(args, new System.Collections.ObjectModel.ReadOnlyDictionary<string, object>(args.Attributes));
+        }
 
         /// <summary>
         /// Gets or sets the child content.
@@ -200,16 +233,17 @@ namespace Radzen.Blazor
         [Parameter]
         public EventCallback<IEnumerable<object>> CheckedValuesChanged { get; set; }
 
-        void RenderTreeItem(RenderTreeBuilder builder, object data, RenderFragment<RadzenTreeItem> template, Func<object, string> text,
+        void RenderTreeItem(RenderTreeBuilder builder, object data, RenderFragment<RadzenTreeItem> template, Func<object, string> text, Func<object, bool> checkable,
             Func<object, bool> hasChildren, Func<object, bool> expanded, Func<object, bool> selected, IEnumerable children = null)
         {
             builder.OpenComponent<RadzenTreeItem>(0);
             builder.AddAttribute(1, nameof(RadzenTreeItem.Text), text(data));
-            builder.AddAttribute(2, nameof(RadzenTreeItem.Value), data);
-            builder.AddAttribute(3, nameof(RadzenTreeItem.HasChildren), hasChildren(data));
-            builder.AddAttribute(4, nameof(RadzenTreeItem.Template), template);
-            builder.AddAttribute(5, nameof(RadzenTreeItem.Expanded), expanded(data));
-            builder.AddAttribute(6, nameof(RadzenTreeItem.Selected), Value == data || selected(data));
+            builder.AddAttribute(2, nameof(RadzenTreeItem.Checkable), checkable(data));
+            builder.AddAttribute(3, nameof(RadzenTreeItem.Value), data);
+            builder.AddAttribute(4, nameof(RadzenTreeItem.HasChildren), hasChildren(data));
+            builder.AddAttribute(5, nameof(RadzenTreeItem.Template), template);
+            builder.AddAttribute(6, nameof(RadzenTreeItem.Expanded), expanded(data));
+            builder.AddAttribute(7, nameof(RadzenTreeItem.Selected), Value == data || selected(data));
             builder.SetKey(data);
         }
 
@@ -220,15 +254,25 @@ namespace Radzen.Blazor
             return new RenderFragment(builder =>
             {
                 Func<object, string> text = null;
+                Func<object, bool> checkable = null;
 
                 foreach (var data in children)
                 {
                     if (text == null)
                     {
-                        text = level.Text ?? Getter<string>(data, level.TextProperty);
+                        text = level.Text ?? 
+                            (!string.IsNullOrEmpty(level.TextProperty) ? Getter<string>(data, level.TextProperty) : null) ??
+                            (o => "");
                     }
 
-                    RenderTreeItem(builder, data, level.Template, text, level.HasChildren, level.Expanded, level.Selected);
+                    if (checkable == null)
+                    {
+                        checkable = level.Checkable ??
+                            (!string.IsNullOrEmpty(level.CheckableProperty) ? Getter<bool>(data, level.CheckableProperty) : null) ??
+                            (o => true);
+                    }
+
+                    RenderTreeItem(builder, data, level.Template, text, checkable, level.HasChildren, level.Expanded, level.Selected);
 
                     var hasChildren = level.HasChildren(data);
 
@@ -244,7 +288,7 @@ namespace Radzen.Blazor
                         else
                         {
                             builder.AddAttribute(7, "ChildContent", (RenderFragment)null);
-						}
+                        }
                     }
 
                     builder.CloseComponent();
@@ -298,6 +342,7 @@ namespace Radzen.Blazor
                 var childContent = new RenderFragment(builder =>
                 {
                     Func<object, string> text = null;
+                    Func<object, bool> checkable = null;
                     var children = args.Children;
 
                     foreach (var data in children.Data)
@@ -307,7 +352,14 @@ namespace Radzen.Blazor
                             text = children.Text ?? Getter<string>(data, children.TextProperty);
                         }
 
-                        RenderTreeItem(builder, data, children.Template, text, children.HasChildren, children.Expanded, children.Selected);
+                        if (checkable == null)
+                        {
+                            checkable = children.Checkable ??
+                                (!string.IsNullOrEmpty(children.CheckableProperty) ? Getter<bool>(data, children.CheckableProperty) : null) ??
+                                    (o => true);
+                        }
+
+                        RenderTreeItem(builder, data, children.Template, text, checkable, children.HasChildren, children.Expanded, children.Selected);
                         builder.CloseComponent();
                     }
                 });
@@ -316,13 +368,16 @@ namespace Radzen.Blazor
 
                 if (AllowCheckBoxes && AllowCheckChildren && args.Children.Data != null)
                 {
-                    if (CheckedValues != null && CheckedValues.Contains(item.Value))
+                    if (CheckedValues != null)
                     {
-                        await SetCheckedValues(CheckedValues.Union(args.Children.Data.Cast<object>().Except(UncheckedValues)));
-                    }
-                    else
-                    {
-                        await SetCheckedValues(CheckedValues.Except(args.Children.Data.Cast<object>()));
+                        if (CheckedValues.Contains(item.Value))
+                        {
+                            await SetCheckedValues(CheckedValues.Union(args.Children.Data.Cast<object>().Except(UncheckedValues)));
+                        }
+                        else
+                        {
+                            await SetCheckedValues(CheckedValues.Except(args.Children.Data.Cast<object>()));
+                        }
                     }
                 }
             }
@@ -374,6 +429,93 @@ namespace Radzen.Blazor
             {
                 Levels.Add(level);
                 StateHasChanged();
+            }
+        }
+
+        internal int focusedIndex = -1;
+
+        bool preventKeyPress = true;
+        async Task OnKeyPress(KeyboardEventArgs args)
+        {
+            var key = args.Code != null ? args.Code : args.Key;
+
+            if (key == "ArrowUp" || key == "ArrowDown")
+            {
+                preventKeyPress = true;
+
+                focusedIndex = Math.Clamp(focusedIndex + (key == "ArrowUp" ? -1 : 1), 0, CurrentItems.Count - 1);
+            }
+            else if (key == "ArrowLeft" || key == "ArrowRight")
+            {
+                preventKeyPress = true;
+
+                if (focusedIndex >= 0 && focusedIndex < CurrentItems.Count)
+                {
+                    var item = CurrentItems[focusedIndex];
+
+                    if (item.ChildContent != null || item.HasChildren)
+                    {
+                        await item.ExpandCollapse(key == "ArrowRight");
+                    }
+                }
+            }
+            else if (key == "Enter" || key == "Space")
+            {
+                preventKeyPress = true;
+
+                if (focusedIndex >= 0 && focusedIndex < CurrentItems.Count)
+                {
+                    await SelectItem(CurrentItems[focusedIndex]);
+
+                    if (AllowCheckBoxes)
+                    {
+                        await CurrentItems[focusedIndex].CheckedChange(!CurrentItems[focusedIndex].IsChecked());
+                    }
+                }
+            }
+            else
+            {
+                preventKeyPress = false;
+            }
+        }
+
+        internal bool IsFocused(RadzenTreeItem item)
+        {
+            return CurrentItems.IndexOf(item) == focusedIndex && focusedIndex != -1;
+        }
+
+        internal void InsertInCurrentItems(int index, RadzenTreeItem item)
+        {
+            if (index <= CurrentItems.Count)
+            {
+                CurrentItems.Insert(index, item);
+            }
+        }
+
+        internal void RemoveFromCurrentItems(int index, int count)
+        {
+            if (index >= 0)
+            {
+                CurrentItems.RemoveRange(index, count);
+            }
+
+            if (focusedIndex > index)
+            {
+                focusedIndex = index;
+            }
+        }
+
+        List<RadzenTreeItem> _currentItems;
+        internal List<RadzenTreeItem> CurrentItems
+        {
+            get
+            {
+                if (_currentItems == null)
+                {
+                    _currentItems = items;
+                }
+
+                return _currentItems;
             }
         }
     }

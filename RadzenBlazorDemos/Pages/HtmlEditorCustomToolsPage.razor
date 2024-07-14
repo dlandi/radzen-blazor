@@ -3,7 +3,7 @@
 <RadzenText TextStyle="TextStyle.H2" TagName="TagName.H1" class="rz-pt-8">
     Radzen Blazor HtmlEditor custom tools
 </RadzenText>
-<RadzenText TextStyle="TextStyle.Subtitle1" class="rz-pb-4">
+<RadzenText TextStyle="TextStyle.Subtitle1" TagName="TagName.P" class="rz-pb-4">
     RadzenHtmlEditor allows the developer to create custom tools via the <code>RadzenHtmlEditorCustomTool</code> tag.
 </RadzenText>
 
@@ -30,6 +30,6 @@
 <RadzenText Anchor="html-editor-custom-tools#command-dialog" TextStyle="TextStyle.H5" TagName="TagName.H2" class="rz-pt-12 rz-mb-6">
     Custom dialog
 </RadzenText>
-<RadzenExample ComponentName="HtmlEditor" Example="HtmlEditorCustomToolDialog">
+<RadzenExample ComponentName="HtmlEditor" Example="HtmlEditorCustomToolDialog" AdditionalSourceCodePages=@(new [] {"HtmlEditorCustomDialog.razor"})>
     <HtmlEditorCustomToolDialog />
 </RadzenExample>

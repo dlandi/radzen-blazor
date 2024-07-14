@@ -24,6 +24,13 @@ namespace Radzen.Blazor
         public string Icon { get; set; }
 
         /// <summary>
+        /// Gets or sets the icon color.
+        /// </summary>
+        /// <value>The icon color.</value>
+        [Parameter]
+        public string IconColor { get; set; }
+
+        /// <summary>
         /// Gets or sets the value.
         /// </summary>
         /// <value>The value.</value>
@@ -37,12 +44,27 @@ namespace Radzen.Blazor
         [Parameter]
         public bool Disabled { get; set; }
 
+        RadzenSplitButton _splitButton;
         /// <summary>
         /// Gets or sets the split button.
         /// </summary>
         /// <value>The split button.</value>
         [CascadingParameter]
-        public RadzenSplitButton SplitButton { get; set; }
+        public RadzenSplitButton SplitButton 
+        {
+            get
+            {
+                return _splitButton;
+            }
+            set
+            {
+                if (_splitButton != value)
+                {
+                    _splitButton = value;
+                    _splitButton.AddItem(this);
+                }
+            }
+        }
 
 
         /// <summary>
@@ -58,6 +80,17 @@ namespace Radzen.Blazor
             }
         }
 
-        ClassList ItemClassList => ClassList.Create("rz-menuitem").AddDisabled(Disabled);
+        ClassList ItemClassList => ClassList.Create("rz-menuitem").AddDisabled(Disabled).Add("rz-state-focused", SplitButton.IsFocused(this));
+
+        /// <inheritdoc />
+        public override void Dispose()
+        {
+            base.Dispose();
+
+            if (SplitButton != null)
+            {
+                SplitButton.RemoveItem(this);
+            }
+        }
     }
 }

@@ -20,6 +20,12 @@ namespace Radzen.Blazor
     /// </example>
     public partial class RadzenFileInput<TValue> : FormComponent<TValue>
     {
+        /// <summary>
+        /// Specifies additional custom attributes that will be rendered by the input.
+        /// </summary>
+        /// <value>The attributes.</value>
+        [Parameter]
+        public IReadOnlyDictionary<string, object> InputAttributes { get; set; }
 
         /// <summary>
         /// Gets or sets the choose button text.
@@ -27,6 +33,20 @@ namespace Radzen.Blazor
         /// <value>The choose button text.</value>
         [Parameter]
         public string ChooseText { get; set; } = "Choose";
+
+        /// <summary>
+        /// Gets or sets the delete button text.
+        /// </summary>
+        /// <value>The delete button text.</value>
+        [Parameter]
+        public string DeleteText { get; set; } = "Delete";
+
+        /// <summary>
+        /// Gets or sets the text.
+        /// </summary>
+        /// <value>The text.</value>
+        [Parameter]
+        public string ImageAlternateText { get; set; } = "image";
 
         /// <summary>
         /// Gets or sets the title.
@@ -127,20 +147,6 @@ namespace Radzen.Blazor
             await OnChange();
         }
 
-        string _Id;
-        string Id
-        {
-            get
-            {
-                if (_Id == null)
-                {
-                    _Id = $"{Guid.NewGuid()}";
-                }
-
-                return _Id;
-            }
-        }
-
         private bool visibleChanged = false;
 
         /// <inheritdoc />
@@ -154,7 +160,7 @@ namespace Radzen.Blazor
 
                 if (Visible)
                 {
-                    await JSRuntime.InvokeVoidAsync("Radzen.uploads", Reference, Id);
+                    await JSRuntime.InvokeVoidAsync("Radzen.uploads", Reference, Name ?? GetId());
                 }
             }
         }

@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.JSInterop;
 
 namespace Radzen.Blazor
 {
@@ -36,6 +38,78 @@ namespace Radzen.Blazor
 
             return $"rz-paginator rz-unselectable-text rz-helper-clearfix {HorizontalAlignCssClasses[HorizontalAlign]} {String.Join(" ", additionalClasses)}";
         }
+
+        /// <summary>
+        /// Gets or sets the pager's first page button's title attribute.
+        /// </summary>
+        [Parameter]
+        public string FirstPageTitle { get; set; } = "First page.";
+
+        /// <summary>
+        /// Gets or sets the pager's first page button's aria-label attribute.
+        /// </summary>
+        [Parameter]
+        public string FirstPageAriaLabel { get; set; } = "Go to first page.";
+
+        /// <summary>
+        /// Gets or sets the pager's optional previous page button's label text.
+        /// </summary>
+        [Parameter]
+        public string PrevPageLabel { get; set; }
+
+        /// <summary>
+        /// Gets or sets the pager's previous page button's title attribute.
+        /// </summary>
+        [Parameter]
+        public string PrevPageTitle { get; set; } = "Previous page";
+
+        /// <summary>
+        /// Gets or sets the pager's previous page button's aria-label attribute.
+        /// </summary>
+        [Parameter]
+        public string PrevPageAriaLabel { get; set; } = "Go to previous page.";
+
+        /// <summary>
+        /// Gets or sets the pager's last page button's title attribute.
+        /// </summary>
+        [Parameter]
+        public string LastPageTitle { get; set; } = "Last page";
+
+        /// <summary>
+        /// Gets or sets the pager's last page button's aria-label attribute.
+        /// </summary>
+        [Parameter]
+        public string LastPageAriaLabel { get; set; } = "Go to last page.";
+
+        /// <summary>
+        /// Gets or sets the pager's optional next page button's label text.
+        /// </summary>
+        [Parameter]
+        public string NextPageLabel { get; set; }
+
+        /// <summary>
+        /// Gets or sets the pager's next page button's title attribute.
+        /// </summary>
+        [Parameter]
+        public string NextPageTitle { get; set; } = "Next page";
+
+        /// <summary>
+        /// Gets or sets the pager's next page button's aria-label attribute.
+        /// </summary>
+        [Parameter]
+        public string NextPageAriaLabel { get; set; } = "Go to next page.";
+
+        /// <summary>
+        /// Gets or sets the pager's numeric page number buttons' title attributes.
+        /// </summary>
+        [Parameter]
+        public string PageTitleFormat { get; set; } = "Page {0}";
+
+        /// <summary>
+        /// Gets or sets the pager's numeric page number buttons' aria-label attributes.
+        /// </summary>
+        [Parameter]
+        public string PageAriaLabelFormat { get; set; } = "Go to page {0}.";
 
         /// <summary>
         /// Gets or sets the horizontal align.
@@ -332,6 +406,108 @@ namespace Radzen.Blazor
                 await InvokeAsync(Reload);
                 await PageChanged.InvokeAsync(new PagerEventArgs() { Skip = skip, Top = PageSize, PageIndex = CurrentPage });
             }
+        }
+
+        bool preventKeyDown = false;
+        int focusedIndex = -3;
+
+        /// <summary>
+        /// Handles the <see cref="E:KeyDown" /> event.
+        /// </summary>
+        /// <param name="args">The <see cref="KeyboardEventArgs"/> instance containing the event data.</param>
+        protected virtual async Task OnKeyDown(KeyboardEventArgs args)
+        {
+            var key = args.Code != null ? args.Code : args.Key;
+
+            var numberOfDisplayedPages = Math.Min(endPage + 1, PageNumbersCount);
+
+            if (key == "ArrowLeft" || key == "ArrowRight")
+            {
+                preventKeyDown = true;
+
+                focusedIndex = Math.Clamp(focusedIndex + (key == "ArrowLeft" ? -1 : 1), -2, numberOfDisplayedPages + 1);
+
+                if (CurrentPage == 0 && focusedIndex < 0)
+                {
+                    focusedIndex = 0;
+                }
+                else if (CurrentPage == numberOfPages - 1 && focusedIndex > numberOfDisplayedPages - 1)
+                {
+                    focusedIndex = numberOfDisplayedPages - 1;
+                }
+            }
+            else if (key == "Space" || key == "Enter")
+            {
+                preventKeyDown = true;
+
+                if (focusedIndex == -2)
+                {
+                    await FirstPage();
+                    shouldFocus = true;
+                }
+                else if (focusedIndex == -1)
+                {
+                    await PrevPage();
+                    shouldFocus = true;
+                }
+                else if (focusedIndex == numberOfDisplayedPages)
+                {
+                    await NextPage();
+                    shouldFocus = true;
+                }
+                else if (focusedIndex == numberOfDisplayedPages + 1)
+                {
+                    await LastPage();
+                    shouldFocus = true;
+                }
+                else 
+                {
+                    await GoToPage(focusedIndex + startPage);
+                    shouldFocus = true;
+                }
+
+                if (CurrentPage == 0 && focusedIndex < 0)
+                {
+                    focusedIndex = 0;
+                }
+                else if (CurrentPage == numberOfPages - 1 && focusedIndex > numberOfDisplayedPages - 1)
+                {
+                    focusedIndex = numberOfDisplayedPages - 1;
+                }
+            }
+            else
+            {
+                preventKeyDown = false;
+                shouldFocus = false;
+            }
+        }
+
+        bool shouldFocus;
+
+        void OnFocus(FocusEventArgs args)
+        {
+            focusedIndex = focusedIndex == -3 ? 0 : focusedIndex;
+
+            if (CurrentPage == 0 && focusedIndex < 0)
+            {
+                focusedIndex = 0;
+            }
+            else if (CurrentPage == numberOfPages - 1 && focusedIndex > numberOfPages - 1)
+            {
+                focusedIndex = numberOfPages - 1;
+            }
+        }
+
+        /// <inheritdoc />
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+            await base.OnAfterRenderAsync(firstRender);
+
+            if (shouldFocus)
+            {
+                shouldFocus = false;
+                await JSRuntime.InvokeVoidAsync("Radzen.focusElement", GetId());
+            }    
         }
     }
 }

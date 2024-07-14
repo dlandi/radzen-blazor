@@ -17,11 +17,11 @@
     var grid = Reference;
     var visibleColumns = columns.Where(c => c.Visible).ToList();
 <div @ref="@Element" style="@Style" @attributes="Attributes" class="@GetCssClass()" id="@GetId()">
-    @if (AllowPaging && (PagerPosition == PagerPosition.Top || PagerPosition == PagerPosition.TopAndBottom))
+    @if (AllowPaging && PagerPosition.HasFlag(PagerPosition.Top))
     {
-            <RadzenPager @ref="topPager" Count="@Count" PageSize="@PageSize" PageNumbersCount="@PageNumbersCount" PageChanged="@OnPageChanged" PageSizeChanged="@OnPageSizeChanged" PageSizeOptions="@PageSizeOptions" ShowPagingSummary="@ShowPagingSummary" Density="@Density" />
+            <RadzenPager @ref="topPager" Count="@Count" PageSize="@PageSize" PageNumbersCount="@PageNumbersCount" PageChanged="@OnPageChanged" PageSizeChanged="@OnPageSizeChanged" PageSizeOptions="@PageSizeOptions" ShowPagingSummary="@ShowPagingSummary" Density="@Density" PrevPageLabel="@PrevPageLabel" NextPageLabel="@NextPageLabel" />
     }
-    <div class="rz-datatable-scrollable-wrapper rz-helper-clearfix" style="">
+    <div class="rz-datatable-scrollable-wrapper rz-helper-clearfix">
         <div class="rz-datatable-scrollable-view">
 
             <div class="rz-datatable-scrollable-header">
@@ -34,11 +34,11 @@
                             }
                             @foreach (var column in visibleColumns)
                             {
-                                <col id=@(getColumnResizerId(visibleColumns.IndexOf(column)) + "-col") style="@column.GetStyle()">
+                                <col id=@(getColumnUniqueId(visibleColumns.IndexOf(column)) + "-col") style="@column.GetStyle()">
                             }
                         </colgroup>
                         <thead class="rz-datatable-thead">
-                            <tr class="">
+                            <tr>
                                 @if (Template != null)
                                 {
                                     <th class="rz-col-icon  rz-unselectable-text" scope="col">
@@ -79,7 +79,7 @@
                                             @if (AllowColumnResize)
                                             {
                                                 var columnIndex = visibleColumns.IndexOf(column);
-                                                <div id="@getColumnResizerId(columnIndex)" style="cursor:col-resize;float:right;"
+                                                <div id="@(getColumnUniqueId(columnIndex) + "-resizer")" style="cursor:col-resize;float:right;"
                                                      @onclick:preventDefault="true" @onclick:stopPropagation="true"
                                                      @onmousedown=@(args => StartColumnResize(args, columnIndex))>&nbsp;</div>
                                             }
@@ -273,7 +273,7 @@
                             }
                             @foreach (var column in visibleColumns)
                             {
-                                <col id=@(getColumnResizerId(visibleColumns.IndexOf(column)) + "-data-col") style="@column.GetStyle()">
+                                <col id=@(getColumnUniqueId(visibleColumns.IndexOf(column)) + "-data-col") style="@column.GetStyle()">
                             }
                         </colgroup>
                         <tbody class="rz-datatable-data  rz-datatable-hoverable-rows">
@@ -293,7 +293,7 @@
                                             <span class="rz-column-title"></span>
                                             @if (rowArgs.Item1.Expandable)
                                             {
-                                                <a href="javascript:void(0)" @onclick="@(_ => ExpandItem(item))">
+                                                <a @onclick:preventDefault="true" @onclick="@(_ => ExpandItem(item))">
                                                     <span class="@(ExpandedItemStyle(item))"></span>
                                                 </a>
                                             }
@@ -449,11 +449,11 @@
                                     }
                                     @foreach (var column in visibleColumns)
                                     {
-                                        <col id=@(getColumnResizerId(visibleColumns.IndexOf(column)) + "-footer-col") style="@column.GetStyle()">
+                                        <col id=@(getColumnUniqueId(visibleColumns.IndexOf(column)) + "-footer-col") style="@column.GetStyle()">
                                     }
                                 </colgroup>
                                 <tfoot class="rz-datatable-tfoot">
-                                    <tr class="">
+                                    <tr>
                                         @if (Template != null)
                                         {
                                             <td class="rz-col-icon  rz-unselectable-text" scope="col">
@@ -480,9 +480,9 @@
             </div>
         </div>
 
-        @if (AllowPaging && (PagerPosition == PagerPosition.Bottom || PagerPosition == PagerPosition.TopAndBottom))
+        @if (AllowPaging && PagerPosition.HasFlag(PagerPosition.Bottom))
         {
-            <RadzenPager @ref="bottomPager" Count="@Count" PageSize="@PageSize" PageNumbersCount="@PageNumbersCount" PageChanged="@OnPageChanged" PageSizeChanged="@OnPageSizeChanged" PageSizeOptions="@PageSizeOptions" ShowPagingSummary="@ShowPagingSummary" class="rz-paginator-bottom" Density="@Density" />
+            <RadzenPager @ref="bottomPager" Count="@Count" PageSize="@PageSize" PageNumbersCount="@PageNumbersCount" PageChanged="@OnPageChanged" PageSizeChanged="@OnPageSizeChanged" PageSizeOptions="@PageSizeOptions" ShowPagingSummary="@ShowPagingSummary" class="rz-paginator-bottom" Density="@Density" PrevPageLabel="@PrevPageLabel" NextPageLabel="@NextPageLabel" />
         }
     </div>
     }
@@ -646,14 +646,14 @@
     [Parameter]
     public bool AllowColumnResize { get; set; }
 
-    string getColumnResizerId(int columnIndex)
+    string getColumnUniqueId(int columnIndex)
     {
         return string.Join("", $"{UniqueID}".Split('.')) + columnIndex;
     }
 
     async Task StartColumnResize(MouseEventArgs args, int columnIndex)
     {
-        await JSRuntime.InvokeVoidAsync("Radzen.startColumnResize", getColumnResizerId(columnIndex), Reference, columnIndex, args.ClientX);
+        await JSRuntime.InvokeVoidAsync("Radzen.startColumnResize", getColumnUniqueId(columnIndex), Reference, columnIndex, args.ClientX);
     }
 
     [JSInvokable("RadzenGrid.OnColumnResized")]

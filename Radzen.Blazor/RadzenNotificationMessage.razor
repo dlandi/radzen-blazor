@@ -5,13 +5,13 @@
     var classes = GetMessageCssClasses();
 
    <div class="rz-notification-message rz-growl " style="width: 250px;z-index: 1002;position:static;@(Message.Click != null || Message.CloseOnClick ? "cursor: pointer;" : "") @Style">
-        <div aria-live="polite" class="rz-growl-item-container rz-state-highlight @classes.Item1">
+        <div class="rz-growl-item-container rz-state-highlight @classes.Item1">
             <div class="rz-growl-item">
                 <div class="rz-growl-icon-close rzi rzi-times" @onclick="@Close" style="cursor:pointer"></div>
                 <span class="rz-growl-image rzi @classes.Item2" @onclick="NotificationClicked"></span>
                 <div class="rz-growl-message" @onclick="NotificationClicked">
-                    <span class="rz-growl-title">@((MarkupString)Message.Summary)</span>
-                    <p>@((MarkupString)Message.Detail)</p>
+                    <span class="rz-growl-title">@if (Message.SummaryContent != null) { @Message.SummaryContent(Service); } else { @((MarkupString)Message.Summary); }</span>
+                    <p>@if (Message.DetailContent != null) { @Message.DetailContent(Service); } else { @((MarkupString)Message.Detail); }</p>
                 </div>
                 <div style="clear: both;"></div>
             </div>
@@ -54,7 +54,8 @@
    public void Close()
    {
       Service.Messages.Remove(Message);
-      System.Threading.Tasks.Task.Delay(0).ContinueWith(r => { Visible = false; });
+      Message?.Close?.Invoke(Message);
+      //System.Threading.Tasks.Task.Delay(0).ContinueWith(r => { Visible = false; });
    }
 
    protected override void OnInitialized()

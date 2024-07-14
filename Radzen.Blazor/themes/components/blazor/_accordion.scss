@@ -3,6 +3,8 @@ $accordion-item-margin: 0 !default;
 $accordion-item-border: none !default;
 $accordion-item-background-color: var(--rz-base-background-color) !default;
 $accordion-item-color: var(--rz-text-color) !default;
+$accordion-item-focus-outline: var(--rz-outline-focus) !default;
+$accordion-item-focus-outline-offset: calc(-1 * var(--rz-outline-width)) !default;
 $accordion-item-line-height: 1.25rem !default;
 $accordion-item-font-size: var(--rz-body-font-size) !default;
 $accordion-item-font-weight: normal !default;
@@ -18,7 +20,7 @@ $accordion-selected-color: var(--rz-secondary) !default;
 $accordion-hover-color: $accordion-selected-color !default;
 $accordion-content-padding: 0.5rem 0.5rem 0.5rem 1.5rem !default;
 $accordion-content-font-size: $accordion-item-font-size !default;
-$accordion-border-radius: var(--rz-border-radius)!default;
+$accordion-border-radius: var(--rz-border-radius) !default;
 $accordion-shadow: none !default;
 
 // Accordion CSS variables
@@ -29,6 +31,8 @@ $accordion-shadow: none !default;
   --rz-accordion-item-border: #{$accordion-item-border};
   --rz-accordion-item-background-color: #{$accordion-item-background-color};
   --rz-accordion-item-color: #{$accordion-item-color};
+  --rz-accordion-item-focus-outline: #{$accordion-item-focus-outline};
+  --rz-accordion-item-focus-outline-offset: #{$accordion-item-focus-outline-offset};
   --rz-accordion-item-line-height: #{$accordion-item-line-height};
   --rz-accordion-item-font-size: #{$accordion-item-font-size};
   --rz-accordion-item-font-weight: #{$accordion-item-font-weight};
@@ -47,7 +51,29 @@ $accordion-shadow: none !default;
 }
 
 .rz-accordion {
+  border-radius: var(--rz-accordion-border-radius);
   box-shadow: var(--rz-accordion-shadow);
+
+  & > div:first-child {
+    border-radius: var(--rz-accordion-border-radius) var(--rz-accordion-border-radius) 0 0;
+  }
+
+  & > div:last-child,
+  & > div:last-child > div {
+    border-radius: 0 0 var(--rz-accordion-border-radius) var(--rz-accordion-border-radius);
+  }
+
+  & > div:only-child {
+    border-radius: var(--rz-accordion-border-radius);
+  }
+
+  &:focus {
+    outline: var(--rz-outline-normal);
+  }
+
+  &:focus-visible {
+    outline: var(--rz-accordion-item-focus-outline);
+  }
 }
 
 .rz-accordion-header {
@@ -75,6 +101,11 @@ $accordion-shadow: none !default;
     span:not(.rz-accordion-toggle-icon) {
       flex-grow: 1;
     }
+  }
+
+  :focus-visible &.rz-state-focused {
+    outline: var(--rz-accordion-item-focus-outline);
+    outline-offset: var(--rz-accordion-item-focus-outline-offset);
   }
 
   .rzi {

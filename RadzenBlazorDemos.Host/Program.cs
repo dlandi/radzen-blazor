@@ -16,6 +16,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
+builder.Services.AddRazorComponents()
+    .AddInteractiveWebAssemblyComponents();
 builder.Services.AddSingleton(sp =>
 {
     // Get the address that the app is currently running at
@@ -31,10 +33,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(optio
 });
 
 // Add Radzen.Blazor services
-builder.Services.AddScoped<DialogService>();
-builder.Services.AddScoped<NotificationService>();
-builder.Services.AddScoped<TooltipService>();
-builder.Services.AddScoped<ContextMenuService>();
+builder.Services.AddRadzenComponents();
 
 // Demo services
 builder.Services.AddScoped<ThemeService>();
@@ -91,11 +90,12 @@ app.UseRequestLocalization(new RequestLocalizationOptions
 */
 
 app.UseHttpsRedirection();
-app.UseBlazorFrameworkFiles();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseAntiforgery();
 app.MapRazorPages();
+app.MapRazorComponents<RadzenBlazorDemos.Host.App>()
+    .AddInteractiveWebAssemblyRenderMode().AddAdditionalAssemblies(typeof(RadzenBlazorDemos.App).Assembly);
 app.MapControllers();
-app.MapFallbackToPage("/_Host");
 app.Run();

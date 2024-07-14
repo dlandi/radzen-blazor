@@ -15,15 +15,15 @@
         {
             @if (!string.IsNullOrWhiteSpace(Path))
             {
-                <RadzenLink Icon="@Icon" Path="@Path" Text="@Text" />
+                <RadzenLink Icon="@Icon" IconColor="@IconColor" Path="@Path" Text="@Text" />
             }
             else
             {
                 @if (!string.IsNullOrWhiteSpace(Icon))
                 {
-                    <RadzenIcon Icon="@Icon" />
+                    <RadzenIcon Icon="@Icon" IconColor="@IconColor" />
                 }
-                <RadzenLabel Text="@Text" />
+                <span class="rz-label">@Text</span>
             }
         }
     </div>

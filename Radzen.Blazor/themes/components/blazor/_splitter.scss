@@ -1,5 +1,5 @@
 $splitter-bar-color: var(--rz-text-secondary-color) !default;
-$splitter-bar-color-active: var(--rz-text-contrast-color) !default;
+$splitter-bar-color-active: var(--rz-on-secondary) !default;
 $splitter-bar-background-color: var(--rz-base-200) !default;
 $splitter-bar-background-color-active: var(--rz-secondary) !default;
 $splitter-bar-hover-opacity: 1 !default;
@@ -155,4 +155,13 @@ $splitter-bar-hover-opacity: 1 !default;
             flex: 1 1 auto;
         }
     }
+}
+
+.rz-splitter-mask {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
 }

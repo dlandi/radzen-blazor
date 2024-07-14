@@ -54,6 +54,20 @@ namespace Radzen.Blazor
         [Parameter]
         public LineType LineType { get; set; }
 
+        /// <summary>
+        /// Gets or sets the color range of the fill.
+        /// </summary>
+        /// <value>The color range of the fill.</value>
+        [Parameter]
+        public IList<SeriesColorRange> FillRange { get; set; }
+
+        /// <summary>
+        /// Gets or sets the color range of the stroke.
+        /// </summary>
+        /// <value>The color range of the stroke.</value>
+        [Parameter]
+        public IList<SeriesColorRange> StrokeRange { get; set; }
+
         /// <inheritdoc />
         public override string Color
         {
@@ -74,6 +88,30 @@ namespace Radzen.Blazor
 
                 return Items.Count();
             }
+        }
+
+        IEnumerable<double> IChartStackedColumnSeries.ValuesForCategory(double value)
+        {
+            if (Items == null)
+            {
+                return Enumerable.Empty<double>();
+            }
+
+            var category = ComposeCategory(Chart.CategoryScale);
+
+            return Items.Where(item => category(item) == value).Select(Value);
+        }
+
+        IEnumerable<object> IChartStackedColumnSeries.ItemsForCategory(double value)
+        {
+            if (Items == null)
+            {
+                return Enumerable.Empty<object>();
+            }
+
+            var category = ComposeCategory(Chart.CategoryScale);
+
+            return Items.Where(item => category(item) == value).Cast<object>();
         }
 
         double IChartStackedColumnSeries.ValueAt(int index)
@@ -101,7 +139,7 @@ namespace Radzen.Blazor
 
             if (index >= 0)
             {
-                var color = PickColor(index, Fills, Fill);
+                var color = PickColor(index, Fills, Fill, FillRange, Value(item));
 
                 if (color != null)
                 {
@@ -146,23 +184,27 @@ namespace Radzen.Blazor
             return category(item) - ColumnWidth / 2;
         }
 
-        private double GetColumnTop(TItem item, int columnIndex, int index, IEnumerable<IChartStackedColumnSeries> stackedColumnSeries)
+        private double GetColumnTop(TItem item, int columnIndex, Func<TItem, double> category, IEnumerable<IChartStackedColumnSeries> stackedColumnSeries)
         {
-            var count = stackedColumnSeries.Max(series => series.Count);
-            var sum = stackedColumnSeries.Take(columnIndex).Sum(series => series.ValueAt(index));
+            var sum = Sum(columnIndex, stackedColumnSeries, category(item));
 
             var y = Chart.ValueScale.Scale(Value(item) + sum);
 
             return y;
         }
 
-        private double GetColumnBottom(int columnIndex, int index, IEnumerable<IChartStackedColumnSeries> stackedColumnSeries)
+        private static double Sum(int columnIndex, IEnumerable<IChartStackedColumnSeries> stackedColumnSeries, double category)
+        {
+            return stackedColumnSeries.Take(columnIndex).SelectMany(series => series.ValuesForCategory(category)).DefaultIfEmpty(0).Sum();
+        }
+
+        private double GetColumnBottom(TItem item, int columnIndex, Func<TItem, double> category, IEnumerable<IChartStackedColumnSeries> stackedColumnSeries)
         {
             var ticks = Chart.ValueScale.Ticks(Chart.ValueAxis.TickDistance);
 
-            var sum = stackedColumnSeries.Take(columnIndex).Sum(series => series.ValueAt(index));
+            var sum = Sum(columnIndex, stackedColumnSeries, category(item));
 
-            return Chart.ValueScale.Scale(Math.Max(0, Math.Max(ticks.Start, sum)));
+            return Chart.ValueScale.Scale(Math.Max(ticks.Start, sum));
         }
 
         int ColumnIndex => VisibleColumnSeries.IndexOf(this);
@@ -176,7 +218,9 @@ namespace Radzen.Blazor
         /// <inheritdoc />
         internal override double TooltipY(TItem item)
         {
-            return GetColumnTop(item, ColumnIndex, Items.IndexOf(item), StackedColumnSeries);
+            var category = ComposeCategory(Chart.CategoryScale);
+
+            return GetColumnTop(item, ColumnIndex, category, StackedColumnSeries);
         }
 
         /// <inheritdoc />
@@ -187,13 +231,12 @@ namespace Radzen.Blazor
             var width = ColumnWidth;
             var stackedColumnSeries = StackedColumnSeries;
 
-            for (var index = 0; index < Items.Count; index++)
+            foreach (var data in Items)
             {
-                var data = Items[index];
                 var startX = GetColumnLeft(data, category);
                 var endX = startX + width;
-                var dataY = GetColumnTop(data, columnIndex, index, stackedColumnSeries);
-                var y0 = GetColumnBottom(columnIndex, index, stackedColumnSeries);
+                var dataY = GetColumnTop(data, columnIndex, category, stackedColumnSeries);
+                var y0 = GetColumnBottom(data, columnIndex, category, stackedColumnSeries);
                 var startY = Math.Min(dataY, y0);
                 var endY = Math.Max(dataY, y0);
 
@@ -212,12 +255,12 @@ namespace Radzen.Blazor
             var list = new List<ChartDataLabel>();
             var stackedColumnSeries = StackedColumnSeries;
             var columnIndex = ColumnIndex;
+            var category = ComposeCategory(Chart.CategoryScale);
 
-            for (var index = 0; index < Items.Count; index++)
+            foreach (var data in Items)
             {
-                var data = Items[index];
-                var top = GetColumnTop(data, columnIndex, index, stackedColumnSeries);
-                var bottom = GetColumnBottom(columnIndex, index, stackedColumnSeries);
+                var top = GetColumnTop(data, columnIndex, category, stackedColumnSeries);
+                var bottom = GetColumnBottom(data, columnIndex, category, stackedColumnSeries);
                 var y = top + (bottom - top) / 2;
 
                 list.Add(new ChartDataLabel

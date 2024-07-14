@@ -216,9 +216,30 @@ namespace Radzen
         }
 
         /// <summary>
-        /// Gets the Search text typed by user
+        /// Gets or sets the search text
         /// </summary>
-        public string SearchText => searchText;
+        [Parameter]
+        public string SearchText
+        {
+            get
+            {
+                return searchText;
+            }
+            set
+            {
+                if (searchText != value)
+                {
+                    searchText = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the search text changed.
+        /// </summary>
+        /// <value>The search text changed.</value>
+        [Parameter]
+        public EventCallback<string> SearchTextChanged { get; set; }
 
         /// <summary>
         /// The search text
@@ -257,7 +278,7 @@ namespace Radzen
 
                         query.Add($"{Enum.GetName(typeof(StringFilterOperator), FilterOperator)}(@0)");
 
-                        _view = Query.Where(String.Join(".", query), ignoreCase ? searchText.ToLower() : searchText);
+                        _view = Query.Where(DynamicLinqCustomTypeProvider.ParsingConfig, string.Join(".", query), ignoreCase ? searchText.ToLower() : searchText);
                     }
                     else
                     {
@@ -295,6 +316,12 @@ namespace Radzen
         /// <returns>A Task representing the asynchronous operation.</returns>
         public override async Task SetParametersAsync(ParameterView parameters)
         {
+            var searchTextChanged = parameters.DidParameterChange(nameof(SearchText), SearchText);
+            if (searchTextChanged)
+            {
+                searchText = parameters.GetValueOrDefault<string>(SearchText);
+            }
+
             var dataChanged = parameters.DidParameterChange(nameof(Data), Data);
 
             if (dataChanged)
@@ -309,6 +336,7 @@ namespace Radzen
             if (EditContext != null && ValueExpression != null && FieldIdentifier.Model != EditContext.Model)
             {
                 FieldIdentifier = FieldIdentifier.Create(ValueExpression);
+                EditContext.OnValidationStateChanged -= ValidationStateChanged;
                 EditContext.OnValidationStateChanged += ValidationStateChanged;
             }
 
@@ -349,7 +377,7 @@ namespace Radzen
         /// Gets the value.
         /// </summary>
         /// <returns>System.Object.</returns>
-        public object GetValue()
+        public virtual object GetValue()
         {
             return Value;
         }
@@ -364,12 +392,19 @@ namespace Radzen
                                                                        .AddDisabled(Disabled)
                                                                        .Add(FieldIdentifier, EditContext)
                                                                        .Add("rz-state-empty", !HasValue);
+#if NET5_0_OR_GREATER
+        /// <inheritdoc/>
+        public virtual async ValueTask FocusAsync()
+        {
+            await Element.FocusAsync();
+        }
+#endif
 
         /// <summary> Provides support for RadzenFormField integration. </summary>
         [CascadingParameter]
         public IFormFieldContext FormFieldContext { get; set; }
 
         /// <summary> Gets the current placeholder. Returns empty string if this component is inside a RadzenFormField.</summary>
-        protected string CurrentPlaceholder => FormFieldContext != null ? " " : Placeholder;
+        protected string CurrentPlaceholder => FormFieldContext?.AllowFloatingLabel == true ? " " : Placeholder;
     }
 }

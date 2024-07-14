@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Radzen.Blazor
@@ -19,6 +21,13 @@ namespace Radzen.Blazor
             return GetClassList("rz-switch").Add("rz-switch-checked", Value).ToString();
         }
 
+        /// <summary>
+        /// Specifies additional custom attributes that will be rendered by the input.
+        /// </summary>
+        /// <value>The attributes.</value>
+        [Parameter]
+        public IReadOnlyDictionary<string, object> InputAttributes { get; set; }
+
         private string ValueAsString => Value.ToString().ToLower();
 
         /// <summary>
@@ -36,6 +45,23 @@ namespace Radzen.Blazor
             await ValueChanged.InvokeAsync(Value);
             if (FieldIdentifier.FieldName != null) { EditContext?.NotifyFieldChanged(FieldIdentifier); }
             await Change.InvokeAsync(Value);
+        }
+
+        bool preventKeyPress = true;
+        async Task OnKeyPress(KeyboardEventArgs args, Task task)
+        {
+            var key = args.Code != null ? args.Code : args.Key;
+
+            if (key == "Space" || key == "Enter")
+            {
+                preventKeyPress = true;
+
+                await task;
+            }
+            else
+            {
+                preventKeyPress = false;
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -31,6 +32,13 @@ namespace Radzen.Blazor
         /// <value>The expanded changed callback.</value>
         [Parameter]
         public EventCallback<bool> ExpandedChanged { get; set; }
+
+        /// <summary>
+        /// Gets or sets the text.
+        /// </summary>
+        /// <value>The text.</value>
+        [Parameter]
+        public string ImageAlternateText { get; set; } = "image";
 
         /// <summary>
         /// Gets or sets the text.
@@ -68,6 +76,13 @@ namespace Radzen.Blazor
         public string Icon { get; set; }
 
         /// <summary>
+        /// Gets or sets the icon color.
+        /// </summary>
+        /// <value>The icon color.</value>
+        [Parameter]
+        public string IconColor { get; set; }
+
+        /// <summary>
         /// Gets or sets the image.
         /// </summary>
         /// <value>The image.</value>
@@ -86,7 +101,9 @@ namespace Radzen.Blazor
         /// </summary>
         /// <value><c>true</c> if expanded; otherwise, <c>false</c>.</value>
         [Parameter]
-        public bool Expanded { get; set; } = false;
+        public bool Expanded { get; set; }
+
+        internal bool ExpandedInternal { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether this <see cref="RadzenPanelMenuItem"/> is selected.
@@ -102,9 +119,9 @@ namespace Radzen.Blazor
         [Parameter]
         public RenderFragment ChildContent { get; set; }
 
-        async System.Threading.Tasks.Task Toggle()
+        internal async System.Threading.Tasks.Task Toggle()
         {
-            if (!expanded && !Parent.Multiple)
+            if (!ExpandedInternal && !Parent.Multiple)
             {
                 var itemsToSkip = new List<RadzenPanelMenuItem>();
                 var p = ParentItem;
@@ -117,66 +134,50 @@ namespace Radzen.Blazor
                 Parent.CollapseAll(itemsToSkip);
             }
 
-            expanded = !expanded;
-            await ExpandedChanged.InvokeAsync(expanded);
+            ExpandedInternal = !ExpandedInternal;
+            await ExpandedChanged.InvokeAsync(ExpandedInternal);
             StateHasChanged();
         }
 
         internal async System.Threading.Tasks.Task Collapse()
         {
-            if (expanded)
+            if (ExpandedInternal)
             {
-                expanded = false;
-                await ExpandedChanged.InvokeAsync(expanded);
+                ExpandedInternal = false;
+                await ExpandedChanged.InvokeAsync(ExpandedInternal);
                 StateHasChanged();
             }
         }
 
         string getStyle()
         {
-            string deg = expanded ? "180" : "0";
+            string deg = ExpandedInternal ? "180" : "0";
             return $@"transform: rotate({deg}deg);";
+        }
+
+        string getIconStyle()
+        { 
+            return $"{(Parent?.DisplayStyle == MenuItemDisplayStyle.Icon ? "margin-right:0px;" : "")}{(!string.IsNullOrEmpty(IconColor) ? $"color:{IconColor}" : "")}";
         }
 
         string getItemStyle()
         {
-            return expanded ? "" : "display:none";
+            return ExpandedInternal ? "" : "display:none";
         }
 
         void Expand()
         {
-            expanded = true;
+            ExpandedInternal = true;
         }
 
         RadzenPanelMenu _parent;
-        
+
         /// <summary>
         /// Gets or sets the click callback.
         /// </summary>
         /// <value>The click callback.</value>
         [Parameter]
         public EventCallback<MenuItemEventArgs> Click { get; set; }
-
-        /// <summary>
-        /// Gets or sets the parent.
-        /// </summary>
-        /// <value>The parent.</value>
-        [CascadingParameter]
-        public RadzenPanelMenu Parent
-        {
-            get
-            {
-                return _parent;
-            }
-            set
-            {
-                if (_parent != value)
-                {
-                    _parent = value;
-                    _parent.AddItem(this);
-                }
-            }
-        }
 
         RadzenPanelMenuItem _parentItem;
 
@@ -203,6 +204,31 @@ namespace Radzen.Blazor
             }
         }
 
+        /// <summary>
+        /// Gets or sets the parent.
+        /// </summary>
+        /// <value>The parent.</value>
+        [CascadingParameter]
+        public RadzenPanelMenu Parent
+        {
+            get
+            {
+                return _parent;
+            }
+            set
+            {
+                if (_parent != value)
+                {
+                    _parent = value;
+
+                    if (ParentItem == null)
+                    {
+                        _parent.AddItem(this);
+                    }
+                }
+            }
+        }
+
         internal List<RadzenPanelMenuItem> items = new List<RadzenPanelMenuItem>();
 
         /// <summary>
@@ -214,6 +240,7 @@ namespace Radzen.Blazor
             if (items.IndexOf(item) == -1)
             {
                 items.Add(item);
+                Parent.SelectItem(item);
                 StateHasChanged();
             }
         }
@@ -243,19 +270,17 @@ namespace Radzen.Blazor
             }
         }
 
-        private bool expanded = false;
-
         /// <inheritdoc />
         public override async Task SetParametersAsync(ParameterView parameters)
         {
             if (parameters.DidParameterChange(nameof(Expanded), Expanded))
             {
-                expanded = parameters.GetValueOrDefault<bool>(nameof(Expanded));
+                ExpandedInternal = parameters.GetValueOrDefault<bool>(nameof(Expanded));
             }
 
             await base.SetParametersAsync(parameters);
         }
-        
+
         /// <summary>
         /// Handles the <see cref="E:Click" /> event.
         /// </summary>
@@ -288,6 +313,24 @@ namespace Radzen.Blazor
                 {
                     await Click.InvokeAsync(eventArgs);
                 }
+            }
+        }
+
+        internal string GetItemCssClass()
+        {
+            return $"{GetCssClass()} {(Parent.IsFocused(this) ? "rz-state-focused" : "")}".Trim();
+        }
+
+        /// <inheritdoc />
+        public override void Dispose()
+        {
+            base.Dispose();
+
+            items.Remove(this);
+
+            if (Parent != null)
+            {
+                Parent.RemoveItem(this);
             }
         }
     }

@@ -25,18 +25,26 @@
 
         return
         @<g class="@className">
-            @for (var index = 0; index < Items.Count; index++)
+            @foreach (var data in Items)
             {
-                var data = Items[index];
                 var y = GetBarTop(data, category);
-                var x = GetBarRight(data, barIndex, index, barSeries);
+                var x = GetBarRight(data, barIndex, category, barSeries);
+                var itemValue = Value(data);
                 var radius = Chart.BarOptions.Radius;
 
-                if (radius > height / 2 || barIndex < barSeries.Count - 1)
+                var x0 = GetBarLeft(data, barIndex, category, barSeries);
+
+                if (radius > 0)
                 {
-                    radius = 0;
+                    var items = barSeries.SelectMany(series => series.ItemsForCategory(category(data))).ToList();
+                    var index = items.IndexOf(data);
+                    var width = Math.Abs(x0 - x);
+
+                    if (radius > height / 2 || index < items.Count - 1 || radius > width)
+                    {
+                        radius = 0;
+                    }
                 }
-                var x0 = GetBarLeft(barIndex, index, barSeries);
 
                 var r = radius.ToInvariantString();
 
@@ -46,8 +54,8 @@
                 {
                     path = $"M {x0.ToInvariantString()} {y.ToInvariantString()} L {(x+radius).ToInvariantString()} {y.ToInvariantString()} A {r} {r} 0 0 0 {x.ToInvariantString()} {(y+radius).ToInvariantString()} L {x.ToInvariantString()} {(y+height-radius).ToInvariantString()} A {r} {r} 0 0 0 {(x+radius).ToInvariantString()} {(y + height).ToInvariantString()} L {x0.ToInvariantString()} {(y+height).ToInvariantString()} Z";
                 }
-                var fill = PickColor(Items.IndexOf(data), Fills, Fill);
-                var stroke = PickColor(Items.IndexOf(data), Strokes, Stroke);
+                var fill = PickColor(Items.IndexOf(data), Fills, Fill, FillRange, itemValue);
+                var stroke = PickColor(Items.IndexOf(data), Strokes, Stroke, StrokeRange, itemValue);
 
                 <Path @key="@path" D="@path" Stroke="@stroke" StrokeWidth="@StrokeWidth" Fill="@fill" LineType="@LineType" Style="@style" />
             }

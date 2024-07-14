@@ -27,6 +27,9 @@ namespace Radzen.Blazor
     /// &lt;/RadzenDataList&gt;
     /// </code>
     /// </example>
+#if NET6_0_OR_GREATER
+    [CascadingTypeParameter(nameof(TItem))]
+#endif
     public partial class RadzenDataList<TItem> : PagedDataBoundComponent<TItem>
     {
         /// <inheritdoc />
@@ -116,6 +119,20 @@ namespace Radzen.Blazor
                 DrawRows(builder);
 #endif
             });
+        }
+
+        /// <summary>
+        /// Reloads this instance.
+        /// </summary>
+        public async override Task Reload()
+        {
+            await base.Reload();
+#if NET5_0_OR_GREATER
+            if (virtualize != null)
+            {
+                await virtualize.RefreshDataAsync();
+            }
+#endif
         }
 
         internal void DrawRows(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
