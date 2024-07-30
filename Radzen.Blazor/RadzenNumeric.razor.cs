@@ -35,14 +35,14 @@ namespace Radzen.Blazor
         /// <inheritdoc />
         protected override string GetComponentCssClass()
         {
-            return GetClassList("rz-spinner")
+            return GetClassList("rz-numeric")
                                         .Add($"rz-text-align-{Enum.GetName(typeof(TextAlign), TextAlign).ToLower()}")
                                         .ToString();
         }
 
         string GetInputCssClass()
         {
-            return GetClassList("rz-spinner-input")
+            return GetClassList("rz-numeric-input")
                         .Add("rz-inputtext")
                         .ToString();
         }
@@ -525,7 +525,6 @@ namespace Radzen.Blazor
         [Parameter]
         public string DownAriaLabel { get; set; } = "Down";
 
-#if NET5_0_OR_GREATER
         /// <summary>
         /// Sets the focus on the input element.
         /// </summary>
@@ -533,6 +532,5 @@ namespace Radzen.Blazor
         {
             await input.FocusAsync();
         }
-#endif
     }
 }

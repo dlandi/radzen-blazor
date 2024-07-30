@@ -124,8 +124,17 @@ namespace Radzen.Blazor
 
                 if (canSetFilterPropertyType)
                 {
-                    _filterPropertyType = typeof(IEnumerable<object>);
-                    SetFilterOperator(FilterOperator.Contains);
+                    if (Type == null)
+                    {
+                        _filterPropertyType = typeof(IEnumerable<object>);
+                    }
+
+                    if (GetFilterOperator() == FilterOperator.Equals)
+                    {
+                        SetFilterOperator(FilterOperator.Contains);
+                    }
+
+                    Grid.FilterPopupRenderMode = PopupRenderMode.OnDemand;
                 }
 
                 var property = GetFilterProperty();
@@ -627,13 +636,13 @@ namespace Radzen.Blazor
             {
                 var stackColumns = visibleFrozenColumns.Where((c, i) => visibleFrozenColumns.IndexOf(this) > i);
 
-                return GetStackedStyleForFrozen(stackColumns, "left");
+                return GetStackedStyleForFrozen(stackColumns, "inset-inline-start");
             }
             else
             {
                 var stackColumns = visibleFrozenColumns.Where((c, i) => visibleFrozenColumns.IndexOf(this) < i);
 
-                return GetStackedStyleForFrozen(stackColumns, "right");
+                return GetStackedStyleForFrozen(stackColumns, "inset-inline-end");
             }
         }
 
@@ -867,12 +876,10 @@ namespace Radzen.Blazor
                     Grid.SaveSettings();
                     if (Grid.IsVirtualizationAllowed())
                     {
-#if NET5_0_OR_GREATER
                         if (Grid.virtualize != null)
                         {
                             await Grid.virtualize.RefreshDataAsync();
                         }
-#endif
                     }
                     else
                     {
@@ -893,12 +900,10 @@ namespace Radzen.Blazor
                     Grid.SaveSettings();
                     if (Grid.IsVirtualizationAllowed())
                     {
-#if NET5_0_OR_GREATER
                         if (Grid.virtualize != null)
                         {
                             await Grid.virtualize.RefreshDataAsync();
                         }
-#endif
                     }
                     else
                     {
@@ -919,12 +924,10 @@ namespace Radzen.Blazor
                     Grid.SaveSettings();
                     if (Grid.IsVirtualizationAllowed())
                     {
-#if NET5_0_OR_GREATER
                         if (Grid.virtualize != null)
                         {
                             await Grid.virtualize.RefreshDataAsync();
                         }
-#endif
                     }
                     else
                     {
@@ -974,32 +977,12 @@ namespace Radzen.Blazor
             return filterValue ?? FilterValue;
         }
 
-        IEnumerable filterValues;
-        internal IEnumerable GetFilterValues()
-        {
-            if (filterValues == null && Grid.Data != null && !string.IsNullOrEmpty(GetFilterProperty()))
-            {
-                var property = GetFilterProperty();
-                var propertyType = PropertyAccess.GetPropertyType(typeof(TItem), GetFilterProperty());
-
-                if (property.IndexOf(".") != -1)
-                {
-                    property = $"np({property})";
-                }
-
-                if (propertyType == typeof(string))
-                {
-                    property = $@"({property} == null ? """" : {property})";
-                }
-
-                filterValues = Grid.Data.AsQueryable().Where<TItem>(Grid.allColumns.Where(c => c != this)).Select(DynamicLinqCustomTypeProvider.ParsingConfig, property).Distinct().Cast(propertyType ?? typeof(object));
-            }
-
-            return filterValues;
-        }
         internal void ClearFilterValues()
         {
-            filterValues = null;
+            if (headerCell != null)
+            {
+                headerCell.filterValues = null;
+            }
         }
 
         /// <summary>
@@ -1398,7 +1381,10 @@ namespace Radzen.Blazor
             Grid?.RemoveColumn(this);
         }
 
-        internal int? getSortIndex()
+        /// <summary>
+        /// Gets the column sort descriptor index indicating order of applied column sort in case of multiple sorting.
+        /// </summary>
+        public int? GetSortIndex()
         {
             var descriptor = Grid.sorts.Where(s => s.Property == GetSortProperty()).FirstOrDefault();
             if (descriptor != null)
@@ -1411,8 +1397,8 @@ namespace Radzen.Blazor
 
         internal string getSortIndexAsString()
         {
-            var index = getSortIndex();
-            return index != null ? $"{getSortIndex() + 1}" : "";
+            var index = GetSortIndex();
+            return index != null ? $"{GetSortIndex() + 1}" : "";
         }
 
         internal RadzenDataGridHeaderCell<TItem> headerCell;

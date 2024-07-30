@@ -34,9 +34,6 @@ namespace Radzen.Blazor
 #endif
     public partial class RadzenDataGrid<TItem> : PagedDataBoundComponent<TItem>
     {
-
-
-#if NET5_0_OR_GREATER
         /// <summary>
         /// Gets or sets a value indicating whether this instance is virtualized.
         /// </summary>
@@ -153,13 +150,11 @@ namespace Radzen.Blazor
 
             return new Microsoft.AspNetCore.Components.Web.Virtualization.ItemsProviderResult<GroupResult>(_groupedPagedView.Any() ? _groupedPagedView.Skip(request.StartIndex).Take(top) : _groupedPagedView, totalItemsCount);
         }
-#endif
 
         RenderFragment DrawRows(IList<RadzenDataGridColumn<TItem>> visibleColumns)
         {
             return new RenderFragment(builder =>
             {
-#if NET5_0_OR_GREATER
                 if (AllowVirtualization)
                 {
                     if(AllowGrouping && Groups.Any() && !LoadData.HasDelegate)
@@ -225,9 +220,6 @@ namespace Radzen.Blazor
                 {
                     DrawGroupOrDataRows(builder, visibleColumns);
                 }
-#else
-                DrawGroupOrDataRows(builder, visibleColumns);
-#endif
             });
         }
 
@@ -270,6 +262,14 @@ namespace Radzen.Blazor
                 }
             }
         }
+
+
+        /// <summary>
+        /// Gets or sets the callback used to load column filter data for DataGrid FilterMode.CheckBoxList filter mode.
+        /// </summary>
+        /// <value>The load filter data event callback.</value>
+        [Parameter]
+        public EventCallback<DataGridLoadColumnFilterDataEventArgs<TItem>> LoadColumnFilterData { get; set; }
 
         /// <summary>
         /// Gets or sets the load child data callback.
@@ -873,9 +873,7 @@ namespace Radzen.Blazor
                     {
                         isOData = Data != null && typeof(ODataEnumerable<TItem>).IsAssignableFrom(Data.GetType());
                         Data = null;
-#if NET5_0_OR_GREATER
                         ResetLoadData();
-#endif
                     }
 
                     await InvokeAsync(ReloadInternal);
@@ -928,9 +926,7 @@ namespace Radzen.Blazor
                 if (LoadData.HasDelegate && IsVirtualizationAllowed())
                 {
                     Data = null;
-#if NET5_0_OR_GREATER
                     ResetLoadData();
-#endif
                 }
 
                 await InvokeAsync(ReloadInternal);
@@ -1008,9 +1004,7 @@ namespace Radzen.Blazor
             if (LoadData.HasDelegate && IsVirtualizationAllowed() && shouldReload)
             {
                 Data = null;
-#if NET5_0_OR_GREATER
                 ResetLoadData();
-#endif
             }
 
             if (closePopup)
@@ -1798,11 +1792,7 @@ namespace Radzen.Blazor
 
         internal bool IsVirtualizationAllowed()
         {
-    #if NET5_0_OR_GREATER
             return AllowVirtualization;
-    #else
-            return false;
-    #endif
         }
 
         IList<TItem> _value;
@@ -2028,9 +2018,7 @@ namespace Radzen.Blazor
         /// </summary>
         public async override Task Reload()
         {
-#if NET5_0_OR_GREATER
             ResetLoadData();
-#endif
             await ReloadInternal();
         }
 
@@ -2043,7 +2031,7 @@ namespace Radzen.Blazor
             {
                 Count = 1;
             }
-#if NET5_0_OR_GREATER
+
             if (AllowVirtualization)
             {
                 if (!LoadData.HasDelegate)
@@ -2063,7 +2051,7 @@ namespace Radzen.Blazor
                     Data = null;
                 }
             }
-#endif
+
             if (!IsVirtualizationAllowed())
             {
                 await InvokeLoadData(skip, PageSize);
@@ -2077,7 +2065,6 @@ namespace Radzen.Blazor
             }
             else
             {
-#if NET5_0_OR_GREATER
                 if (AllowVirtualization)
                 {
                     if (virtualize != null)
@@ -2090,7 +2077,6 @@ namespace Radzen.Blazor
                         await groupVirtualize.RefreshDataAsync();
                     }
                 }
-#endif
             }
 
             if (LoadData.HasDelegate && View.Count() == 0 && Count > 0)
@@ -2859,7 +2845,6 @@ namespace Radzen.Blazor
                 }
                 else
                 {
-#if NET5_0_OR_GREATER
                     itemsToInsert.Remove(item);
                     if(virtualize != null)
                     {
@@ -2870,7 +2855,6 @@ namespace Radzen.Blazor
                     {
                         groupVirtualize.RefreshDataAsync();
                     }
-#endif
                 }
             }
             else
@@ -2930,7 +2914,6 @@ namespace Radzen.Blazor
             }
             else
             {
-#if NET5_0_OR_GREATER
                 if(virtualize != null)
                 {
                     await virtualize.RefreshDataAsync();
@@ -2940,7 +2923,6 @@ namespace Radzen.Blazor
                 {
                     await groupVirtualize.RefreshDataAsync();
                 }
-#endif
             }
 
             await EditRowInternal(item);
@@ -3198,9 +3180,7 @@ namespace Radzen.Blazor
             if (LoadData.HasDelegate && IsVirtualizationAllowed())
             {
                 Data = null;
-#if NET5_0_OR_GREATER
                 ResetLoadData();
-#endif
             }
 
             InvokeAsync(ReloadInternal);
@@ -3228,9 +3208,7 @@ namespace Radzen.Blazor
             if (LoadData.HasDelegate && IsVirtualizationAllowed())
             {
                 Data = null;
-#if NET5_0_OR_GREATER
                 ResetLoadData();
-#endif
             }
 
             InvokeAsync(ReloadInternal);
@@ -3261,7 +3239,7 @@ namespace Radzen.Blazor
                 additionalClasses.Add("rz-density-compact");
             }
 
-            return $"rz-has-paginator rz-datatable  rz-datatable-scrollable {String.Join(" ", additionalClasses)}";
+            return $"rz-has-pager rz-datatable  rz-datatable-scrollable {String.Join(" ", additionalClasses)}";
         }
 
         internal string getHeaderStyle()
@@ -3340,7 +3318,7 @@ namespace Radzen.Blazor
                         Visible = c.GetVisible(),
                         OrderIndex = c.GetOrderIndex(),
                         SortOrder = c.GetSortOrder(),
-                        SortIndex = c.getSortIndex(),
+                        SortIndex = c.GetSortIndex(),
                         FilterValue = c.GetFilterValue(),
                         FilterOperator = c.GetFilterOperator(),
                         SecondFilterValue = c.GetSecondFilterValue(),
